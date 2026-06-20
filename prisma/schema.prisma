@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  documents     Document[]
+  conversations Conversation[]
+}
+
+model Document {
+  id             String          @id @default(cuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  category       String          @default("other")
+  metadata       String          @default("{}")
+  extractedText  String
+  storagePath    String?
+  chunkVersion   Int             @default(0)
+  createdAt      DateTime        @default(now())
+  chunks         DocumentChunk[]
+  conversations  Conversation[]
+
+  @@index([userId])
+  @@index([userId, category])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex   Int
+  sectionTitle String?
+  chapterTitle String?
+  chunkType    String          @default("body")
+  content      String
+  startOffset  Int             @default(0)
+  endOffset    Int             @default(0)
+  lineStart    Int             @default(1)
+  lineEnd      Int             @default(1)
+  pageNumber   Int?
+  embedding  String
+  createdAt  DateTime @default(now())
+
+  @@index([documentId])
+}
+
+model Conversation {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  title      String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  messages   Message[]
+
+  @@index([userId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
